@@ -1,0 +1,6 @@
+{
+    "modelName": "example",
+    "vocab": "\n 0123456789abcdefghijklmnopqrstuvwxyz\ufeff",
+    "sequenceLength": 100,
+    "batchSize": 128
+}
