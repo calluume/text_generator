@@ -1,7 +1,6 @@
-#import tensorflow as tf
+import tensorflow as tf
 import numpy as np
 import pickle, tqdm, os, json
-import tensorflow.data
 from tensorflow import one_hot
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, LSTM, Dropout#, Activation
@@ -13,30 +12,29 @@ class TextGenerator:
         self.model_name = model_name
         self.model_trained = False
 
-    def clean_data(self, filename, save_to_file=True, verbose=False):
-        # read the data
-        text = open(filename, encoding="utf-8").read()
-        # remove caps
-        text = text.lower()
-        # remove punctuation
-        text = text.translate(str.maketrans("", "", punctuation))
-        return text
-
-    def read_data(self, filename, verbose=False):
+    def read_data(self, filename, save_cleaned_data=True, verbose=False):
         if verbose: print("Reading: '"+filename+"'")
 
-        text = self.clean_data(filename)
+        text = open(filename, encoding="utf-8").read()
+        banned_chars = open('data/banned_chars.txt', encoding="utf-8").read()
 
-        self.vocab = ''.join(sorted(set(text)))
+        # Remove all links
+        clean_text = ' '.join(word for word in text.split(' ') if not 'http' in word)
+        # Remove all banned chars
+        clean_text = clean_text.translate(str.maketrans("", "",  banned_chars))
+        
+        self.vocab = ''.join(sorted(set(clean_text)))
         n_unique_chars = len(self.vocab)
 
         if verbose:
             print("unique_chars:", self.vocab)
-            print("Number of characters:", len(text))
+            print("Number of characters:", len(clean_text))
             print("Number of unique characters:", n_unique_chars)
 
-        self.save_model_info('example')
-        return text
+        if save_cleaned_data:
+            with open(filename.split('.')[0]+'_cleaned.txt', 'w') as clean_file:
+                clean_file.write(clean_text)
+        return clean_text
 
     def create_dataset(self, text, sequence_length=100, batch_size=128, verbose=False):
         # dictionary that converts characters to integers
@@ -47,7 +45,6 @@ class TextGenerator:
         # save these dictionaries for later generation
         pickle.dump(self.char2int, open("obj/"+self.model_name+"_char2int.obj", "wb"))
         pickle.dump(self.int2char, open("obj/"+self.model_name+"_int2char.obj", "wb"))
-
 
         # convert all text into integers
         self.encoded_text = np.array([self.char2int[c] for c in text])
@@ -87,6 +84,14 @@ class TextGenerator:
         # save the model
         self.model.save("results/"+self.model_name+"_weights.h5")
 
+        model_info = {'modelName':      self.model_name,
+                      'vocab':          self.vocab,
+                      'sequenceLength': self.sequence_length,
+                      'batchSize':      self.batch_size}
+
+        with open('data/'+self.model_name+'_model_info.json', 'w') as json_file:
+            json.dump(model_info, json_file, indent=4)
+
         self.model_trained = True
 
     def create_model(self):
@@ -97,15 +102,6 @@ class TextGenerator:
             LSTM(256),
             Dense(len(self.vocab), activation="softmax"),
         ])
-
-    def save_model_info(self, filename='model'):
-        model_info = {'modelName': 'example',
-                      'vocab': self.vocab,
-                      'sequenceLength': 100,
-                      'batchSize': 128}
-
-        with open('data/'+filename+'.json', 'w') as json_file:
-            json.dump(model_info, json_file, indent=4)
 
     def split_sample(self, sample):
         # example :
@@ -133,7 +129,7 @@ class TextGenerator:
         # result should be the vector: [0, 0, 0, 1, 0], since 'd' is the 4th character
         return tf.one_hot(input_, len(self.vocab)), tf.one_hot(target, len(self.vocab))
 
-    def generate_text(self, seed, n_chars=400, model_file='example.json'):
+    def generate_text(self, seed, n_sentences=1, max_chars=400, model_file='example.json'):
 
         if not self.model_trained:
             with open('data/'+model_file) as json_file:
@@ -142,9 +138,9 @@ class TextGenerator:
                 self.vocab = model_info['vocab']
                 self.sequence_length = model_info['sequenceLength']
                 self.batch_size = model_info['batchSize']
-                self.char2int = pickle.load(open("obj/"+self.model_name+"_char2int.obj", "rb"))
-                self.int2char = pickle.load(open("obj/"+self.model_name+"_int2char.obj", "rb"))
 
+            self.char2int = pickle.load(open("obj/"+self.model_name+"_char2int.obj", "rb"))
+            self.int2char = pickle.load(open("obj/"+self.model_name+"_int2char.obj", "rb"))
             self.create_model()
 
         vocab_size = len(self.char2int)
@@ -154,7 +150,7 @@ class TextGenerator:
 
         generated = ""
         original_seed = seed
-        for i in tqdm.tqdm(range(n_chars), "Generating text"):
+        for i in tqdm.tqdm(range(max_chars), "Generating text"):
             # make the input sequence
             X = np.zeros((1, self.sequence_length, len(self.vocab)))
             for t, char in enumerate(seed):
@@ -175,8 +171,9 @@ class TextGenerator:
         print(generated)
 
 if __name__ == "__main__":
-    generator = TextGenerator('example')
-    text = generator.read_data('data/wonderland.txt', verbose=True)
-    #generator.create_dataset(text, verbose=False)
-    #generator.train_model(1)
-    generator.generate_text("chapter xiii", 400)
+    
+    generator = TextGenerator('tweets')
+    text = generator.read_data('data/tweets.txt', True, verbose=True)
+    generator.create_dataset(text, verbose=True)
+    generator.train_model(3)
+    generator.generate_text("Donald Trump", 100, 'tweets_model_info.json')
