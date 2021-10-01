@@ -1,0 +1,6 @@
+{
+    "modelName": "wonderland",
+    "vocab": "\n !\"#$%'()*,-./0123456789:;?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]_abcdefghijklmnopqrstuvwxyz\ufeff",
+    "sequenceLength": 200,
+    "batchSize": 128
+}

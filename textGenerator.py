@@ -1,18 +1,16 @@
 import tensorflow as tf
 import numpy as np
-import pickle, tqdm, os, json
+import pickle, tqdm, os, json, string, random
 from tensorflow import one_hot
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, LSTM, Dropout#, Activation
-#from tensorflow.keras.callbacks import ModelCheckpoint
-from string import punctuation
+from tensorflow.keras.layers import Dense, LSTM, Dropout
 
 class TextGenerator:
     def __init__(self, model_name):
         self.model_name = model_name
         self.model_trained = False
 
-    def read_data(self, filename, save_cleaned_data=True, verbose=False):
+    def read_data(self, filename, save_cleaned_data=False, verbose=False):
         if verbose: print("Reading: '"+filename+"'")
 
         text = open(filename, encoding="utf-8").read()
@@ -169,11 +167,13 @@ class TextGenerator:
         print("Seed:", original_seed)
         print("Generated text:")
         print(generated)
+        return generated
 
 if __name__ == "__main__":
-    
-    generator = TextGenerator('tweets')
-    text = generator.read_data('data/tweets.txt', True, verbose=True)
+    model = 'tweets' # or wonderland
+    generator = TextGenerator(model)
+    text = generator.read_data('data/'+model+'.txt', True, verbose=True)
     generator.create_dataset(text, verbose=True)
-    generator.train_model(3)
-    generator.generate_text("Donald Trump", 100, 'tweets_model_info.json')
+    generator.train_model(30)
+    random_seed = ''.join(random.choice(string.ascii_letters) for i in range(random.randint(5, 100)))
+    generated_text = generator.generate_text(random_seed, max_chars=400, model_file=model+'_model_info.json')
