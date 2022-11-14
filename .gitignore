@@ -1,2 +1,6 @@
 
 *.icloud
+models/*
+!models/wonderland
+quotes.py
+townNames.py

@@ -7,29 +7,32 @@ and a dataset of around 800,000 tweets from July and August 2020 about the US pr
 
 ## Model Training
 
-Each model is defined with a unique model name/ID, used for training and text generation.
-A ```banned_chars.txt``` file can be used to filter certain characters from the dataset before training.
+Each model is defined with a unique model name/ID, used to save all necessary files.
+When the dataset is read, a ```banned_chars.txt``` file can be used to filter certain characters from the dataset before training.
 
 ```python
-    # Create the model object with ID 'example'.
-    generator = TextGenerator('example')
+    # First define the model, which creates all directories.
+    model = 'wonderland'
+    generator = TextGenerator(model)
 
-    # Read the dataset to the model.
-    text = generator.read_data('data/example.txt')
-
-    # Create dataset and character dictionaries.
-    generator.create_dataset(text)
-
-    # Train the model for 30 epochs.
+    # Read and encode the dataset (dataset location defaults to 'models/$MODEL$/data/dataset.txt')
+    text = generator.read_data()
+    generator.create_dataset(text, verbose=True)
+    
+    # Train the model.
     generator.train_model(30)
+
+    # Generate text.
+    random_seed = ''.join(random.choice(string.ascii_letters) for i in range(random.randint(5, 100)))
+    generated_text = generator.generate_text(random_seed, max_chars=20)
 ```
 
 ## Text Generation
 
-All files needed for text generation are created during training. For a model with ID 'wonderland', these will be:
- - ```wonderland_weights.h5```: RNN model weights.
- - ```wonderland_model_info```: Saves model info such as vocabulary, sequence length and batch size.
- - ```wonderland_char2int.obj``` & ```wonderland_int2char.obj```: Dictionaries for converting characters to and from integers.
+All files needed for text generation are created during the dataset creation and training, and are saved in the ```data```, ```obj``` and ```results``` files in the model's directory. These are:
+ - ```weights.h5```: RNN model weights.
+ - ```model_info```: Saves model info such as vocabulary, sequence length and batch size.
+ - ```char2int.obj``` & ```int2char.obj```: Dictionaries for converting characters to and from integers.
 
 Text can then be generated using the ```generate_text()``` function.
 
