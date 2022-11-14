@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-import pickle, tqdm, os, json, string, random
+import pickle, tqdm, os, json
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, LSTM, Dropout
 
@@ -19,7 +19,8 @@ class TextGenerator:
     def read_data(self, dataset_file=None, banned_chars_file=None, save_cleaned_data=False, verbose=False):
         """
         Reads and cleans text from the dataset.
-        :param filename:          Dataset filename
+        :param dataset_file:      Dataset filename
+        :param banned_chars_file: Banned characters list file name
         :param save_cleaned_data: Denotes whether to save the cleaned dataset
         :return str:              Cleaned dataset 
         """
@@ -64,17 +65,15 @@ class TextGenerator:
         :param batch_size: Training batch size
         """
 
-        # Dictionary converting characters to integers.
+        # Create and save dictionaries converting characters to integers and vice versa.
         self.char2int = {c: i for i, c in enumerate(self.vocab)}
-        # Dictionary converting integers to characters.
         self.int2char = {i: c for i, c in enumerate(self.vocab)}
 
         pickle.dump(self.char2int, open(self.model_file+'/obj/char2int.obj', 'wb'))
         pickle.dump(self.int2char, open(self.model_file+'/obj/int2char.obj', 'wb'))
 
-        # Convert all text into integers.
+        # Convert all text into integers and construct tf.data.Dataset object.
         self.encoded_text = np.array([self.char2int[c] for c in text])
-        # Construct tf.data.Dataset object.
         char_dataset = tf.data.Dataset.from_tensor_slices(self.encoded_text)
         
         # Build sequences by batching.
@@ -110,9 +109,8 @@ class TextGenerator:
         # Train and save the model.
         self.model.fit(self.dataset, steps_per_epoch=(len(self.encoded_text) - self.sequence_length) // self.batch_size, epochs=epochs)
         self.model.save(self.model_file+"results/weights.h5")
-        
 
-        # Saves model information as a json file for text generation.
+        # Saves model information in a json file for text generation.
         model_info = {'modelName':      self.model_name,
                       'vocab':          self.vocab,
                       'sequenceLength': self.sequence_length,
@@ -143,20 +141,11 @@ class TextGenerator:
         :return [str]: Input text and target characters
         """
 
-        # example :
-        # sequence_length is 10
-        # sample is "python is a great pro" (21 length)
-        # ds will equal to ('python is ', 'a') encoded as integers
         ds = tf.data.Dataset.from_tensors((sample[:self.sequence_length], sample[self.sequence_length]))
 
         for i in range(1, (len(sample)-1) // 2):
-            # first (input_, target) will be ('ython is a', ' ')
-            # second (input_, target) will be ('thon is a ', 'g')
-            # third (input_, target) will be ('hon is a g', 'r')
-            # and so on
             input_ = sample[i: i+self.sequence_length]
             target = sample[i+self.sequence_length]
-            # extend the dataset with these samples by concatenate() method
             other_ds = tf.data.Dataset.from_tensors((input_, target))
             ds = ds.concatenate(other_ds)
 
@@ -178,11 +167,12 @@ class TextGenerator:
     def generate_text(self, seed, n_sentences=1, max_chars=400, stop_char=None, model_info_filepath=None, verbose=True):
         """
         Generates text from trained weights.
-        :param seed:        Generation seed
-        :param n_sentences: Number of sentences to generate
-        :param max_chars:   Maximum number of characters
-        :param model_file:  Location of model information file
-        :return str:        Generated text
+        :param seed:                Generation seed
+        :param n_sentences:         Number of sentences to generate
+        :param max_chars:           Maximum number of characters
+        :param stop_char:           Stop generation after stop_char is generated
+        :param model_info_filepath: Location of model information file
+        :return str:                Generated text
         """
 
         if model_info_filepath == None:
