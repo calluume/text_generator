@@ -4,3 +4,6 @@ models/*
 !models/wonderland
 quotes.py
 townNames.py
+*.csv
+*.py
+!textGenerator.py

@@ -8,14 +8,13 @@ class TextGenerator:
     def __init__(self, model_name: str):
         self.model_name = model_name
         self.model_file = 'models/'+model_name
+        self.model_trained = False
 
         if not os.path.exists(self.model_file):
             os.makedirs(self.model_file)
             os.makedirs(self.model_file+'/obj')
             os.makedirs(self.model_file+'/data')
             os.makedirs(self.model_file+'/results')
-
-            self.model_trained = False
 
         elif os.path.exists(self.model_file+'/results/model_info.json'):
             with open(self.model_file+'/results/model_info.json', 'r') as info_file:
@@ -171,7 +170,7 @@ class TextGenerator:
         # result should be the vector: [0, 0, 0, 1, 0], since 'd' is the 4th character
         return tf.one_hot(input_, len(self.vocab)), tf.one_hot(target, len(self.vocab))
 
-    def generate_text(self, seed: str, max_chars: int = 200, max_sentences: int = 1, stop_char: str = None, verbose: bool = True):
+    def generate_text(self, seed: str, max_chars: int = 200, max_sentences: int = None, stop_char: str = None, verbose: bool = True):
         """
         Generates text from trained weights.
         :param seed:                Generation seed
